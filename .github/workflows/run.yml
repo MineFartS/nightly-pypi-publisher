@@ -45,7 +45,7 @@ jobs:
       - name: Calculate Dynamic Date
         run: |
           export TZ='America/New_York'
-          echo "ISO=$(date +'%Y.%-m.%-d')" >> $GITHUB_ENV
+          echo "ISO=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
       - uses: actions/setup-python@v5
         with:
@@ -86,7 +86,7 @@ jobs:
 
       - uses: pypa/cibuildwheel@v2.22.0
         env:
-          CIBW_BUILD: cp312-win_amd64 cp312-manylinux_x86_64
+          CIBW_BUILD: cp312-win_amd64 cp312-manylinux_x86_64 cp313-win_amd64 cp313-manylinux_x86_64 cp314-win_amd64 cp314-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
 
       - uses: actions/upload-artifact@v4
