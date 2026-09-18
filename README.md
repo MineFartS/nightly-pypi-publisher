@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build-and-publish:
-    uses: minefarts/nightly-pypi-publisher/.github/workflows/run.yml@v2
+    uses: minefarts/nightly-pypi-publisher/.github/workflows/run.yml@v3
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
