@@ -16,7 +16,7 @@ on:
 
 jobs:
   build-and-publish:
-    uses: minefarts/nightly-pypi-publisher/workflow.yml@v1
+    uses: minefarts/nightly-pypi-publisher/run.yml@v1
     secrets:
       PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
