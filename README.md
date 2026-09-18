@@ -14,6 +14,10 @@ on:
   schedule:
     - cron: '0 3 * * *'
 
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   build-and-publish:
     uses: minefarts/nightly-pypi-publisher/.github/workflows/run.yml@v2
