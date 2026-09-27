@@ -107,9 +107,10 @@ jobs:
       - name: Build pure Python wheel
         if: steps.check-pure-python.outputs.is_pure == 'true' && matrix.os == 'ubuntu-latest'
         run: |
-          mkdir -p ./wheelhouse
           pip install build
-          python -m build --wheel --outdir ./wheelhouse
+          python -m build --wheel --outdir ../temp_wheels
+          mkdir -p ./wheelhouse
+          mv ../temp_wheels/* ./wheelhouse/
 
       - uses: actions/upload-artifact@v4
         if: steps.check-pure-python.outputs.is_pure == 'false' || matrix.os == 'ubuntu-latest'
