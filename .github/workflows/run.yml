@@ -81,15 +81,38 @@ jobs:
           ref: ${{ needs.prepare-version.outputs.commit_sha }}
           submodules: recursive
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - id: check-pure-python
+        name: Detect package type
+        shell: bash
+        run: |
+          if [ -n "$(find . -type f -name "*.cpp" -print -quit)" ]; then
+            echo "is_pure=false" >> $GITHUB_OUTPUT
+          else
+            echo "is_pure=true" >> $GITHUB_OUTPUT
+          fi
+
       - uses: docker/setup-qemu-action@v3
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-latest' && steps.check-pure-python.outputs.is_pure == 'false'
 
       - uses: pypa/cibuildwheel@v2.22.0
+        if: steps.check-pure-python.outputs.is_pure == 'false'
         env:
           CIBW_BUILD: cp312-win_amd64 cp312-manylinux_x86_64 cp313-win_amd64 cp313-manylinux_x86_64 cp314-win_amd64 cp314-manylinux_x86_64
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
 
+      - name: Build pure Python wheel
+        if: steps.check-pure-python.outputs.is_pure == 'true' && matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p ./wheelhouse
+          pip install build
+          python -m build --wheel --outdir ./wheelhouse
+
       - uses: actions/upload-artifact@v4
+        if: steps.check-pure-python.outputs.is_pure == 'false' || matrix.os == 'ubuntu-latest'
         with:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
