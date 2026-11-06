@@ -21,10 +21,10 @@ jobs:
           submodules: recursive
       - id: verify
         run: |
-          if [ "$(git log -1 --format="%s")" == "Apply automatic changes" ]; then
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
+          if [ -z "$(git tag --points-at HEAD)" ]; then
             echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
           fi
 
   prepare-version:
@@ -34,39 +34,26 @@ jobs:
     permissions:
       contents: write
     outputs:
-      version_iso: ${{ env.ISO }}
-      commit_sha: ${{ steps.commit.outputs.commit_hash }}
+      version_iso: ${{ env.VER }}
+      commit_sha: ${{ env.SHA }}
     steps:
 
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Calculate Dynamic Date
-        run: |
-          export TZ='America/New_York'
-          echo "ISO=$(date +'%Y.%m.%d')" >> $GITHUB_ENV
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+        
+      - run: |
+          pip install hatch
+          VER=$(hatch version | tail -n 1)
+          echo "VER=$VER" >> $GITHUB_ENV
 
-      - name: Patch pyproject.toml
-        run: |
-          pip install toml
-          python -c "
-          from toml import load, dump
-          with open('pyproject.toml', 'r') as f:
-              data = load(f)
-          data['project']['version'] = 'v${{ env.ISO }}'
-          with open('pyproject.toml', 'w') as f:
-              dump(data, f)
-          "
-
-      - id: commit
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Apply automatic changes
+      - run: |
+          SHA=$(git rev-parse HEAD)
+          echo "SHA=$SHA" >> $GITHUB_ENV
 
   build-wheels:
     needs: prepare-version
