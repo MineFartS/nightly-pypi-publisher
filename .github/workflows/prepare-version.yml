@@ -12,6 +12,9 @@ on:
       commit_sha:
         value: ${{ jobs.prepare-version.outputs.commit_sha }}
 
+      is_pure_py:
+        value: ${{ jobs.prepare-version.outputs.is_pure_py }}
+
 
 jobs:
 
@@ -25,6 +28,7 @@ jobs:
     outputs:
       version_iso: ${{ env.VER }}
       commit_sha: ${{ env.SHA }}
+      is_pure_py: ${{ env.PURE }}
   
     steps:
 
@@ -44,4 +48,11 @@ jobs:
       - run: |
           SHA=$(git rev-parse HEAD)
           echo "SHA=$SHA" >> $GITHUB_ENV
+
+      - run: |
+          if [ -n "$(find . -type f -name "*.cpp" -print -quit)" ]; then
+            echo "PURE=false" >> $GITHUB_ENV
+          else
+            echo "PURE=true" >> $GITHUB_ENV
+          fi
 

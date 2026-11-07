@@ -23,6 +23,7 @@ jobs:
     uses: ./.github/workflows/build-wheels.yml
     with:
       commit_sha: ${{ needs.prepare-version.outputs.commit_sha }}
+      is_pure_py: ${{ needs.prepare-version.outputs.is_pure_py }}
 
   publish:
     needs: [prepare-version, build-wheels]
