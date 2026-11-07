@@ -1,0 +1,66 @@
+name: Publish
+
+on:
+
+  workflow_call:
+
+    inputs:
+
+      commit_sha:
+        required: true
+        type: string
+
+      version_iso:
+        required: true
+        type: string
+
+    secrets:
+
+      PYPI_API_TOKEN:
+        required: true
+
+
+jobs:
+  publish:
+
+      runs-on: ubuntu-latest
+
+      permissions:
+        contents: write
+        id-token: write
+
+      steps:
+
+        - uses: actions/checkout@v4
+          with:
+            ref: ${{ inputs.commit_sha }}
+            submodules: recursive
+        - run: mkdir -p dist
+
+        - uses: actions/download-artifact@v4
+          with:
+            pattern: cibw-wheels-*
+            path: dist/
+            merge-multiple: true
+
+        - uses: actions/setup-python@v5
+          with: 
+            python-version: '3.12'
+        - run: |
+            pip install poetry toml
+            poetry config virtualenvs.create false
+            poetry install --no-root --no-interaction
+            
+        - uses: softprops/action-gh-release@v1
+          with:
+            tag_name: v${{ inputs.version_iso }}
+            name: ${{ inputs.version_iso }}
+            body: Automatic Nightly Build
+            files: dist/* 
+            target_commitish: ${{ inputs.commit_sha }}
+
+        - name: Publish package to PyPI
+          env:
+            POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+          run: poetry publish
+

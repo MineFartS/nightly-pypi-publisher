@@ -11,138 +11,25 @@ on:
 jobs:
 
   scan-changes:
-    runs-on: ubuntu-latest
-    outputs:
-      has_changes: ${{ steps.verify.outputs.has_changes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          submodules: recursive
-      - id: verify
-        run: |
-          if [ -z "$(git tag --points-at HEAD)" ]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          fi
+    uses: ./.github/workflows/scan-changes.yml
 
   prepare-version:
     needs: scan-changes
     if: needs.scan-changes.outputs.has_changes == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      version_iso: ${{ env.VER }}
-      commit_sha: ${{ env.SHA }}
-    steps:
-
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-        
-      - run: |
-          pip install hatch
-          VER=$(hatch version | tail -n 1)
-          echo "VER=$VER" >> $GITHUB_ENV
-
-      - run: |
-          SHA=$(git rev-parse HEAD)
-          echo "SHA=$SHA" >> $GITHUB_ENV
+    uses: ./.github/workflows/prepare-version.yml
 
   build-wheels:
     needs: prepare-version
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-    steps:
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-version.outputs.commit_sha }}
-          submodules: recursive
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - id: check-pure-python
-        name: Detect package type
-        shell: bash
-        run: |
-          if [ -n "$(find . -type f -name "*.cpp" -print -quit)" ]; then
-            echo "is_pure=false" >> $GITHUB_OUTPUT
-          else
-            echo "is_pure=true" >> $GITHUB_OUTPUT
-          fi
-
-      - uses: docker/setup-qemu-action@v3
-        if: matrix.os == 'ubuntu-latest' && steps.check-pure-python.outputs.is_pure == 'false'
-
-      - uses: pypa/cibuildwheel@v2.22.0
-        if: steps.check-pure-python.outputs.is_pure == 'false'
-        env:
-          CIBW_BUILD: cp312-win_amd64 cp312-manylinux_x86_64 cp313-win_amd64 cp313-manylinux_x86_64 cp314-win_amd64 cp314-manylinux_x86_64
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-
-      - name: Build pure Python wheel
-        if: steps.check-pure-python.outputs.is_pure == 'true' && matrix.os == 'ubuntu-latest'
-        run: |
-          pip install build
-          python -m build --wheel --outdir ../temp_wheels
-          mkdir -p ./wheelhouse
-          mv ../temp_wheels/* ./wheelhouse/
-
-      - uses: actions/upload-artifact@v4
-        if: steps.check-pure-python.outputs.is_pure == 'false' || matrix.os == 'ubuntu-latest'
-        with:
-          name: cibw-wheels-${{ matrix.os }}
-          path: ./wheelhouse/*.whl
+    uses: ./.github/workflows/build-wheels.yml
+    with:
+      commit_sha: ${{ needs.prepare-version.outputs.commit_sha }}
 
   publish:
     needs: [prepare-version, build-wheels]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    steps:
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare-version.outputs.commit_sha }}
-          submodules: recursive
-      - run: mkdir -p dist
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: cibw-wheels-*
-          path: dist/
-          merge-multiple: true
-
-      - uses: actions/setup-python@v5
-        with: 
-          python-version: '3.12'
-      - run: |
-          pip install poetry toml
-          poetry config virtualenvs.create false
-          poetry install --no-root --no-interaction
-          
-      - uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.prepare-version.outputs.version_iso }}
-          name: ${{ needs.prepare-version.outputs.version_iso }}
-          body: Automatic Nightly Build
-          files: dist/* 
-          target_commitish: ${{ needs.prepare-version.outputs.commit_sha }}
-
-      - name: Publish package to PyPI
-        env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
-        run: poetry publish
+    uses: ./.github/workflows/publish.yml
+    with:
+      commit_sha: ${{ needs.prepare-version.outputs.commit_sha }}
+      version_iso: ${{ needs.prepare-version.outputs.version_iso }}
+    secrets:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }} 
 

@@ -1,0 +1,35 @@
+name: Scan-Changes
+
+
+on:
+  workflow_call:
+
+    outputs:
+
+      has_changes: 
+        value: ${{ jobs.scan-changes.outputs.has_changes }}
+
+
+jobs:
+  scan-changes:
+    
+    runs-on: ubuntu-latest
+    
+    outputs:
+      has_changes: ${{ steps.verify.outputs.has_changes }}
+    
+    steps:
+    
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+      
+      - id: verify
+        run: |
+          if [ -z "$(git tag --points-at HEAD)" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+

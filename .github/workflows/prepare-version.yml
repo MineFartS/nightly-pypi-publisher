@@ -1,0 +1,47 @@
+name: Prepare-Version
+
+
+on:
+  workflow_call:
+
+    outputs:
+
+      version_iso:
+        value: ${{ jobs.prepare-version.outputs.version_iso }}
+
+      commit_sha:
+        value: ${{ jobs.prepare-version.outputs.commit_sha }}
+
+
+jobs:
+
+  prepare-version:
+  
+    runs-on: ubuntu-latest
+  
+    permissions:
+      contents: write
+  
+    outputs:
+      version_iso: ${{ env.VER }}
+      commit_sha: ${{ env.SHA }}
+  
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+        
+      - run: |
+          pip install hatch
+          VER=$(hatch version | tail -n 1)
+          echo "VER=$VER" >> $GITHUB_ENV
+
+      - run: |
+          SHA=$(git rev-parse HEAD)
+          echo "SHA=$SHA" >> $GITHUB_ENV
+
